@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f0e7">
+<title>本番1発ログ</title>
+<style>
+:root{
+  --paper:#f7f3eb; --paper2:#fffdf8; --ink:#302a25; --muted:#766d64;
+  --line:#d9cec0; --accent:#5d4638; --accent2:#806653; --danger:#8a4038;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Mincho ProN","Yu Mincho",serif;line-height:1.55}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:720px;margin:auto;min-height:100vh}
+header{padding:34px 20px 22px;border-bottom:1px solid var(--line);background:linear-gradient(var(--paper2),var(--paper))}
+.brand{font-size:27px;letter-spacing:.12em}
+.subtitle{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:var(--muted);font-size:12px;letter-spacing:.08em;margin-top:4px}
+main{padding:18px 16px 50px}
+h1,h2,h3{font-weight:500;letter-spacing:.06em;margin:0 0 12px}
+h2{font-size:20px} h3{font-size:16px}
+.card{background:var(--paper2);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 2px 8px #00000009}
+.song{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.song-title{font-size:18px}.song-meta{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:var(--muted);font-size:12px;margin-top:3px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+button,.btn{border:1px solid var(--accent);border-radius:9px;padding:10px 13px;background:var(--accent);color:white}
+button.secondary,.btn.secondary{background:transparent;color:var(--accent);border-color:var(--line)}
+button.danger{background:transparent;color:var(--danger);border-color:#d7b8b4}
+label{display:block;font-size:13px;margin:14px 0 6px;color:var(--muted)}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink)}
+textarea{min-height:100px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.choice{display:flex;gap:8px;flex-wrap:wrap}.choice button{flex:1;min-width:80px;background:transparent;color:var(--accent);border-color:var(--line)}
+.choice button.active{background:var(--accent);color:white;border-color:var(--accent)}
+.bargrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.bargrid input{padding:10px 7px;text-align:center}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#f2ece2;border:1px solid var(--line);border-radius:9px;padding:11px;text-align:center}
+.stat b{display:block;font-size:22px;font-weight:500}.stat span{font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px}
+td,th{border-bottom:1px solid var(--line);padding:8px 4px;text-align:left}
+.muted{color:var(--muted);font-size:13px}
+.back{margin-bottom:12px}
+.empty{text-align:center;color:var(--muted);padding:28px 10px}
+canvas{width:100%;height:230px;border:1px solid var(--line);border-radius:9px;background:#fffdf8}
+.small{font-size:11px;color:var(--muted)}
+.hidden{display:none!important}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.statgrid{grid-template-columns:1fr 1fr 1fr}.brand{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand">本番1発ログ</div><div class="subtitle">ONE-TAKE PERFORMANCE JOURNAL</div></header>
+<main id="app"></main>
+</div>
+<script>
+const KEY="honban1patsu_v2";
+const initial=[
+ {id:"alb-1",title:"アルバイシン",composer:"Albéniz",target:"2027-01-19",records:[]},
+ {id:"mal-1",title:"マラガ",composer:"Albéniz",target:"2027-01-19",records:[]},
+ {id:"bach-1",title:"バッハ WTC II-11",composer:"Bach",target:"2026-12-28",records:[]}
+];
+let db=JSON.parse(localStorage.getItem(KEY)||"null")||{songs:initial};
+let formState={key:"",tempo:"普通",dynamics:"no"};
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const fmt=d=>d?d.replaceAll("-","/"):"";
+const app=document.getElementById("app");
+function home(){
+ app.innerHTML=`<h2>曲目</h2>
+ ${db.songs.map(s=>`<div class="card"><div class="song"><div><div class="song-title">${esc(s.title)}</div><div class="song-meta">${esc(s.composer)}　｜　本番 ${fmt(s.target)}</div></div><div class="muted">${s.records.length}回</div></div>
+ <div class="actions"><button onclick="newRecord('${s.id}')">今日の1発録り</button><button class="secondary" onclick="song('${s.id}')">記録を見る</button><button class="secondary" onclick="analysis('${s.id}')">分析</button></div></div>`).join("")}
+ <button class="secondary" onclick="addSong()">＋ 曲を追加</button>`;
+}
+function song(id){
+ const s=db.songs.find(x=>x.id===id);
+ app.innerHTML=`<button class="secondary back" onclick="home()">← 曲目</button><h2>${esc(s.title)}</h2>
+ <div class="muted">${esc(s.composer)}　｜　本番 ${fmt(s.target)}</div>
+ <div class="actions"><button onclick="newRecord('${id}')">＋ 今日の1発録り</button><button class="secondary" onclick="analysis('${id}')">分析</button><button class="secondary" onclick="editSong('${id}')">曲を編集</button></div>
+ ${s.records.length?`<div class="card">${[...s.records].sort((a,b)=>b.date.localeCompare(a.date)||b.no-a.no).map(r=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${fmt(r.date)}</b>　${r.no}回目　事故 ${r.accidents}件<div class="small">${esc(r.main||"")}</div><div class="actions"><button class="secondary" onclick="editRecord('${id}','${r.id}')">詳細・編集</button></div></div>`).join("")}</div>`:`<div class="card empty">まだ記録がありません。</div>`}`;
+}
+function newRecord(id){
+ const s=db.songs.find(x=>x.id===id); formState={key:"",tempo:"普通",dynamics:"no"};
+ const no=s.records.length+1;
+ recordForm(id,null,{date:today(),no,accidents:0,main:"",bars:["","","","",""],tempo:"普通",key:"no",dynamics:"no",reflection:"",audio:null});
+}
+function editRecord(sid,rid){
+ const s=db.songs.find(x=>x.id===sid),r=s.records.find(x=>x.id===rid);
+ formState={key:r.key||"no",tempo:r.tempo||"普通",dynamics:r.dynamics||"no"};
+ recordForm(sid,rid,r);
+}
+function recordForm(sid,rid,r){
+ app.innerHTML=`<button class="secondary back" onclick="song('${sid}')">← 戻る</button><h2>${rid?"記録を編集":"今日の1発録り"}</h2>
+ <div class="grid"><div><label>日付</label><input id="date" type="date" value="${esc(r.date)}"></div><div><label>演奏回数</label><input id="no" type="number" min="1" value="${r.no}"></div></div>
+ <label>自認事故数</label><input id="acc" type="number" min="0" value="${r.accidents}">
+ <label>一番気になった事故</label><input id="main" value="${esc(r.main||"")}">
+ <label>事故した小節（覚えているもの・最大5つ）</label><div class="bargrid">${r.bars.map((b,i)=>`<input id="bar${i}" type="number" min="1" step="1" value="${b??""}" placeholder="${i+1}">`).join("")}</div>
+ <label>調について考えた</label><div class="choice"><button class="${formState.key==="yes"?"active":""}" onclick="pick('key','yes')">はい</button><button class="${formState.key!=="yes"?"active":""}" onclick="pick('key','no')">いいえ</button></div>
+ <label>テンポ感</label><div class="choice">${["早め","普通","遅め","不安定"].map(x=>`<button class="${formState.tempo===x?"active":""}" onclick="pick('tempo','${x}')">${x}</button>`).join("")}</div>
+ <label>強弱を意識した</label><div class="choice"><button class="${formState.dynamics==="yes"?"active":""}" onclick="pick('dynamics','yes')">はい</button><button class="${formState.dynamics!=="yes"?"active":""}" onclick="pick('dynamics','no')">いいえ</button></div>
+ <label>今日の演奏</label><textarea id="reflection" placeholder="今日の演奏について自由に">${esc(r.reflection||"")}</textarea>
+ <label>音声ファイル（任意）</label><input id="audio" type="file" accept="audio/*"><div class="small">現在の試作版では音声本体は保存せず、添付した場合も記録情報だけを扱います。</div>
+ <div class="actions"><button onclick="saveRecord('${sid}','${rid||""}')">保存</button><button class="secondary" onclick="song('${sid}')">キャンセル</button>${rid?`<button class="danger" onclick="deleteRecord('${sid}','${rid}')">削除</button>`:""}</div>`;
+}
+function pick(k,v){formState[k]=v; const sid=document.querySelector('button[onclick*="saveRecord"]')?.getAttribute("onclick")?.match(/saveRecord\\('([^']+)/)?.[1]; if(sid) { const r={date:document.getElementById("date").value,no:+document.getElementById("no").value,accidents:+document.getElementById("acc").value,main:document.getElementById("main").value,bars:[0,1,2,3,4].map(i=>document.getElementById("bar"+i).value),reflection:document.getElementById("reflection").value}; recordForm(sid,null,r); } }
+function saveRecord(sid,rid){
+ const s=db.songs.find(x=>x.id===sid); let audio=null; const f=document.getElementById("audio")?.files?.[0]; if(f) audio={name:f.name,size:f.size,type:f.type};
+ const r={id:rid||crypto.randomUUID(),date:document.getElementById("date").value,no:+document.getElementById("no").value,accidents:+document.getElementById("acc").value,main:document.getElementById("main").value,bars:[0,1,2,3,4].map(i=>document.getElementById("bar"+i).value?+document.getElementById("bar"+i).value:null),key:formState.key||"no",tempo:formState.tempo||"普通",dynamics:formState.dynamics||"no",reflection:document.getElementById("reflection").value,audio};
+ const idx=s.records.findIndex(x=>x.id===rid); if(idx>=0)s.records[idx]=r;else s.records.push(r); save(); song(sid);
+}
+function deleteRecord(sid,rid){if(confirm("この記録を削除しますか？")){const s=db.songs.find(x=>x.id===sid);s.records=s.records.filter(r=>r.id!==rid);save();song(sid)}}
+function addSong(){app.innerHTML=`<button class="secondary back" onclick="home()">← 曲目</button><h2>曲を追加</h2><label>曲名</label><input id="st"><label>作曲者</label><input id="sc"><label>本番予定日（任意）</label><input id="sd" type="date"><div class="actions"><button onclick="saveSong()">追加</button></div>`}
+function saveSong(){db.songs.push({id:crypto.randomUUID(),title:document.getElementById("st").value.trim()||"無題",composer:document.getElementById("sc").value.trim(),target:document.getElementById("sd").value,records:[]});save();home()}
+function editSong(id){const s=db.songs.find(x=>x.id===id);app.innerHTML=`<button class="secondary back" onclick="song('${id}')">← 戻る</button><h2>曲を編集</h2><label>曲名</label><input id="st" value="${esc(s.title)}"><label>作曲者</label><input id="sc" value="${esc(s.composer)}"><label>本番予定日</label><input id="sd" type="date" value="${s.target||""}"><div class="actions"><button onclick="updateSong('${id}')">保存</button></div>`}
+function updateSong(id){const s=db.songs.find(x=>x.id===id);s.title=document.getElementById("st").value.trim();s.composer=document.getElementById("sc").value.trim();s.target=document.getElementById("sd").value;save();song(id)}
+function analysis(id){
+ const s=db.songs.find(x=>x.id===id), all=s.records;
+ const min=all.length?all.map(r=>r.date).sort()[0]:today(),max=all.length?all.map(r=>r.date).sort().at(-1):today();
+ app.innerHTML=`<button class="secondary back" onclick="song('${id}')">← ${esc(s.title)}</button><h2>分析</h2>
+ <div class="grid"><div><label>開始日</label><input id="from" type="date" value="${min}"></div><div><label>終了日</label><input id="to" type="date" value="${max}"></div></div>
+ <div class="actions"><button onclick="renderAnalysis('${id}')">この期間で分析</button></div><div id="analysis"></div>`;
+ renderAnalysis(id);
+}
+function renderAnalysis(id){
+ const s=db.songs.find(x=>x.id===id),from=document.getElementById("from").value,to=document.getElementById("to").value;
+ const rs=s.records.filter(r=>r.date>=from&&r.date<=to).sort((a,b)=>a.no-b.no);
+ const total=rs.reduce((a,r)=>a+r.accidents,0),avg=rs.length?total/rs.length:0;
+ const counts={};rs.forEach(r=>r.bars.filter(Number.isInteger).forEach(b=>counts[b]=(counts[b]||0)+1));
+ const rank=Object.entries(counts).sort((a,b)=>b[1]-a[1]||+a[0]-+b[0]);
+ document.getElementById("analysis").innerHTML=`<div class="statgrid card"><div class="stat"><b>${rs.length}</b><span>記録数</span></div><div class="stat"><b>${total}</b><span>総事故数</span></div><div class="stat"><b>${avg.toFixed(1)}</b><span>平均事故数</span></div></div>
+ <div class="card"><h3>事故小節ランキング</h3>${rank.length?`<table><tr><th>小節</th><th>記憶された事故</th></tr>${rank.map(([b,n])=>`<tr><td>${b}小節</td><td>${n}回</td></tr>`).join("")}</table>`:`<div class="empty">この期間の事故小節データはありません。</div>`}</div>
+ <div class="card"><h3>事故数の推移</h3>${rs.length?`<canvas id="chart" width="680" height="230"></canvas>`:`<div class="empty">この期間の記録はありません。</div>`}</div>
+ <div class="small">平均事故数は、指定した期間に含まれる1発録りだけを対象に計算しています。事故小節は同じ小節が複数回あれば別々に数えます。</div>`;
+ if(rs.length)draw(rs);
+}
+function draw(rs){
+ const c=document.getElementById("chart"),ctx=c.getContext("2d"),w=c.width,h=c.height;
+ ctx.clearRect(0,0,w,h);ctx.strokeStyle="#d9cec0";ctx.fillStyle="#766d64";ctx.font="12px sans-serif";
+ const max=Math.max(1,...rs.map(r=>r.accidents)),L=42,R=15,T=18,B=30;
+ ctx.beginPath();ctx.moveTo(L,T);ctx.lineTo(L,h-B);ctx.lineTo(w-R,h-B);ctx.stroke();
+ for(let i=0;i<=4;i++){let y=T+(h-B-T)*i/4,val=Math.round(max*(4-i)/4);ctx.fillText(val,L-28,y+4);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(w-R,y);ctx.stroke()}
+ rs.forEach((r,i)=>{let x=L+(w-R-L)*(rs.length===1?.5:i/(rs.length-1)),y=T+(h-B-T)*(1-r.accidents/max);ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle="#5d4638";ctx.fill();ctx.fillStyle="#766d64";if(rs.length<=12)ctx.fillText(r.no,x-5,h-10)});
+}
+home();
+</script>
+</body>
+</html>
